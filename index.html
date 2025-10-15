@@ -3,75 +3,145 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Todo List</title>
+  <title>FastAPI Todo App</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 40px;
-      background: #f4f4f4;
+      max-width: 600px;
+      margin: 40px auto;
+      background: #f8f8f8;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
-    h1 { color: #333; }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
     form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
       margin-bottom: 20px;
     }
-    input, button {
-      padding: 8px;
-      margin: 5px;
-    }
-    ul {
-      list-style: none;
-      padding: 0;
-    }
-    li {
-      background: white;
+    input, textarea, button {
       padding: 10px;
-      margin: 5px 0;
       border-radius: 5px;
-      box-shadow: 0 0 3px rgba(0,0,0,0.1);
+      border: 1px solid #ccc;
     }
+    button {
+      background: #0078d7;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #005fa3;
+    }
+    .todo {
+      background: white;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .todo.completed {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+    .actions button {
+      margin-left: 5px;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .delete-btn { background: #e74c3c; color: white; }
+    .edit-btn { background: #27ae60; color: white; }
   </style>
 </head>
 <body>
-  <h1>My Todo List</h1>
+  <h1>FastAPI Todo List</h1>
   <form id="todoForm">
     <input type="text" id="title" placeholder="Title" required>
-    <input type="text" id="description" placeholder="Description" required>
+    <textarea id="description" placeholder="Description" required></textarea>
     <button type="submit">Add Todo</button>
   </form>
 
-  <ul id="todoList"></ul>
+  <div id="todoList"></div>
 
   <script>
-    const API_URL = "https://fastapi-todo-bo0a.onrender.com/api/todos";
+    const apiBase = "https://fastapi-todo.onrender.com/api/todos"; 
 
+    const todoForm = document.getElementById("todoForm");
+    const todoList = document.getElementById("todoList");
+
+    // Fetch and display all todos
     async function fetchTodos() {
-      const res = await fetch(API_URL);
-      const todos = await res.json();
-      const list = document.getElementById("todoList");
-      list.innerHTML = "";
-      todos.forEach(todo => {
-        const li = document.createElement("li");
-        li.textContent = `${todo.title} - ${todo.description}`;
-        list.appendChild(li);
+      const res = await fetch(apiBase);
+      const data = await res.json();
+      todoList.innerHTML = "";
+      data.todos.forEach(todo => {
+        const div = document.createElement("div");
+        div.className = `todo ${todo.is_completed ? "completed" : ""}`;
+        div.innerHTML = `
+          <div>
+            <strong>${todo.title}</strong><br>
+            ${todo.description}
+          </div>
+          <div class="actions">
+            <button class="edit-btn" onclick="toggleComplete(${todo.id}, ${!todo.is_completed})">
+              ${todo.is_completed ? "Undo" : "Done"}
+            </button>
+            <button class="delete-btn" onclick="deleteTodo(${todo.id})">Delete</button>
+          </div>
+        `;
+        todoList.appendChild(div);
       });
     }
 
-    document.getElementById("todoForm").addEventListener("submit", async (e) => {
+    // Add new todo
+    todoForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const title = document.getElementById("title").value;
-      const description = document.getElementById("description").value;
-      
-      await fetch(API_URL, {
+      const newTodo = {
+        title: document.getElementById("title").value,
+        description: document.getElementById("description").value,
+        is_completed: false
+      };
+      await fetch(apiBase, {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ title, description })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newTodo)
       });
-
-      document.getElementById("title").value = "";
-      document.getElementById("description").value = "";
+      todoForm.reset();
       fetchTodos();
     });
 
+    // Toggle completion (update)
+    async function toggleComplete(id, is_completed) {
+      const res = await fetch(`${apiBase}/${id}`);
+      const data = await res.json();
+      const updated = {
+        title: data.todo.title,
+        description: data.todo.description,
+        is_completed
+      };
+      await fetch(`${apiBase}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated)
+      });
+      fetchTodos();
+    }
+
+    // Delete todo
+    async function deleteTodo(id) {
+      await fetch(`${apiBase}/${id}`, { method: "DELETE" });
+      fetchTodos();
+    }
+
+    // Load todos on startup
     fetchTodos();
   </script>
 </body>
