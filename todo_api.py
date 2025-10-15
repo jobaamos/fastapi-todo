@@ -72,3 +72,13 @@ def delete_todo(todo_id: int):
             save_todos(todos)
             return {"message": "Todo deleted successfully", "todo": deleted_todo}
     raise HTTPException(status_code=404, detail="Todo not found")
+
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+
+app.mount("/static", StaticFiles(directory="."), name="static")
+
+@app.get("/", response_class=HTMLResponse)
+def serve_homepage():
+    with open("index.html") as f:
+        return f.read()
