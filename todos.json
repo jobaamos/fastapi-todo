@@ -1,0 +1,8 @@
+[
+    {
+        "id": 1,
+        "title": "Finish backend project",
+        "description": "API connected successfully to JSON database",
+        "is_completed": true
+    }
+]

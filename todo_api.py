@@ -1,50 +1,74 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from typing import Optional, List
+import json
+import os
+
 app = FastAPI()
 
-from typing import Optional
+# JSON file path
+DATA_FILE = "todos.json"
 
+# --- Utility functions ---
+def load_todos() -> List[dict]:
+    """Load todos from JSON file"""
+    if not os.path.exists(DATA_FILE):
+        return []
+    with open(DATA_FILE, "r") as f:
+        return json.load(f)
+
+def save_todos(todos: List[dict]):
+    """Save todos to JSON file"""
+    with open(DATA_FILE, "w") as f:
+        json.dump(todos, f, indent=4)
+
+# --- Model ---
 class Todo(BaseModel):
     id: Optional[int] = None
     title: str
     description: str
     is_completed: bool
 
-
-todos = []
+# --- Endpoints ---
 @app.get("/api/todos")
 def get_todos():
+    todos = load_todos()
     return {"todos": todos}
 
 @app.post("/api/todos")
 def create_todo(todo: Todo):
-    # Automatically assign ID
-    todo.id = len(todos) + 1  
-    todos.append(todo)
+    todos = load_todos()
+    todo.id = len(todos) + 1
+    todos.append(todo.dict())
+    save_todos(todos)
     return {"message": "Todo created successfully", "todo": todo}
-
 
 @app.get("/api/todos/{todo_id}")
 def get_todo_by_id(todo_id: int):
+    todos = load_todos()
     for todo in todos:
-        if todo.id == todo_id:
+        if todo["id"] == todo_id:
             return {"todo": todo}
     raise HTTPException(status_code=404, detail="Todo not found")
 
 @app.put("/api/todos/{todo_id}")
 def update_todo(todo_id: int, updated_todo: Todo):
+    todos = load_todos()
     for index, todo in enumerate(todos):
-        if todo.id == todo_id:
-            todos[index].title = updated_todo.title
-            todos[index].description = updated_todo.description
-            todos[index].is_completed = updated_todo.is_completed
+        if todo["id"] == todo_id:
+            todos[index]["title"] = updated_todo.title
+            todos[index]["description"] = updated_todo.description
+            todos[index]["is_completed"] = updated_todo.is_completed
+            save_todos(todos)
             return {"message": "Todo updated successfully", "todo": todos[index]}
     raise HTTPException(status_code=404, detail="Todo not found")
 
 @app.delete("/api/todos/{todo_id}")
 def delete_todo(todo_id: int):
+    todos = load_todos()
     for index, todo in enumerate(todos):
-        if todo.id == todo_id:
+        if todo["id"] == todo_id:
             deleted_todo = todos.pop(index)
+            save_todos(todos)
             return {"message": "Todo deleted successfully", "todo": deleted_todo}
     raise HTTPException(status_code=404, detail="Todo not found")
