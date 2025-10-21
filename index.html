@@ -6,113 +6,118 @@
   <title>Todo App</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .fade-in {
-      animation: fadeIn 0.4s ease-in-out;
+    body {
+      background: linear-gradient(to right, #f0f9ff, #cbebff);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 1rem;
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+    .todo-card {
+      transition: all 0.3s ease;
+    }
+    .todo-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    @media (max-width: 640px) {
+      .todo-actions {
+        flex-direction: row;
+        justify-content: flex-end;
+      }
     }
   </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen flex flex-col items-center p-6">
-  <div class="bg-white shadow-xl rounded-2xl p-8 w-full max-w-2xl fade-in">
-    <h1 class="text-3xl font-bold text-center text-blue-600 mb-6">Terawork </h1>
-    <h1 class="text-3xl font-bold text-center text-blue-600 mb-6">Todo List</h1>
-
-    <!-- Add Todo Form -->
-    <div class="space-y-3 mb-8">
-      <input id="title" placeholder="Title"
-        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none" />
-      <textarea id="description" placeholder="Description"
-        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"></textarea>
-      <button onclick="addTodo()"
-        class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition">
-        ➕ Add Todo
-      </button>
+<body>
+  <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-6 mt-6">
+    <div class="flex justify-center items-center mb-6">
+      <img src="logo.png" alt="Logo" class="w-10 h-10 mr-2">
+      <h1 class="text-2xl font-bold text-blue-600">Todo List</h1>
     </div>
 
-    <h2 class="text-xl font-semibold mb-3 text-gray-700">Your To-dos</h2>
-    <div id="todos" class="space-y-4"></div>
+    <div class="flex flex-col sm:flex-row gap-2 mb-4">
+      <input id="title" type="text" placeholder="Title"
+        class="flex-1 border p-2 rounded-lg focus:ring focus:ring-blue-300">
+      <input id="description" type="text" placeholder="Description"
+        class="flex-1 border p-2 rounded-lg focus:ring focus:ring-blue-300">
+      <button onclick="addTodo()"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">Add</button>
+    </div>
+
+    <div id="todos" class="flex flex-col gap-4"></div>
   </div>
 
   <script>
-    const API_URL = '/api/todos';
+    const apiUrl = "https://your-render-url.onrender.com/api/todos";
 
     async function fetchTodos() {
-      const res = await fetch(API_URL);
+      const res = await fetch(apiUrl);
       const data = await res.json();
-      const container = document.getElementById('todos');
-      container.innerHTML = '';
+      displayTodos(data.todos);
+    }
 
-      if (data.todos.length === 0) {
-        container.innerHTML = `<p class="text-gray-500 text-center">No todos yet. Add one above!</p>`;
-        return;
-      }
+    function displayTodos(todos) {
+      const todosContainer = document.getElementById("todos");
+      todosContainer.innerHTML = "";
 
-      data.todos.forEach(todo => {
-        const div = document.createElement('div');
-        div.className = `fade-in border p-4 rounded-xl shadow-sm bg-white hover:shadow-md transition`;
+      todos.forEach(todo => {
+        const card = document.createElement("div");
+        card.className = "todo-card bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg";
 
-        div.innerHTML = `
-          <div class="flex justify-between items-start">
-            <div>
-              <h3 class="text-lg font-semibold ${todo.is_completed ? 'line-through text-gray-400' : 'text-gray-800'}">${todo.title}</h3>
-              <p class="text-gray-600">${todo.description}</p>
+        card.innerHTML = `
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between">
+            <div class="flex-1 break-words">
+              <h2 class="font-semibold text-lg ${todo.is_completed ? 'line-through text-gray-500' : ''}">${todo.title}</h2>
+              <p class="text-gray-700 break-words">${todo.description}</p>
             </div>
-            <div class="space-x-2">
-              <button onclick="toggleComplete(${todo.id}, ${!todo.is_completed})"
-                class="px-3 py-1 rounded-lg text-sm ${todo.is_completed ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'} text-white transition">
-                ${todo.is_completed ? 'Undo' : 'Complete'}
-              </button>
+            <div class="todo-actions flex gap-2 mt-2 sm:mt-0">
+              <button onclick="toggleComplete(${todo.id}, ${todo.is_completed})"
+                class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm">✔</button>
               <button onclick="deleteTodo(${todo.id})"
-                class="px-3 py-1 rounded-lg text-sm bg-red-500 hover:bg-red-600 text-white transition">
-                Delete
-              </button>
+                class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm">🗑</button>
             </div>
           </div>
         `;
-        container.appendChild(div);
+
+        todosContainer.appendChild(card);
       });
     }
 
     async function addTodo() {
-      const title = document.getElementById('title').value.trim();
-      const description = document.getElementById('description').value.trim();
-      if (!title || !description) return alert('Please fill all fields.');
+      const title = document.getElementById("title").value.trim();
+      const description = document.getElementById("description").value.trim();
 
-      await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, is_completed: false })
+      if (!title || !description) return alert("Please fill in both fields");
+
+      await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description, is_completed: false }),
       });
 
-      document.getElementById('title').value = '';
-      document.getElementById('description').value = '';
-      fetchTodos();
-    }
-
-    async function toggleComplete(id, newStatus) {
-      const res = await fetch(`${API_URL}/${id}`);
-      if (!res.ok) return alert('Todo not found!');
-      const data = await res.json();
-      const todo = data.todo;
-
-      await fetch(`${API_URL}/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: todo.title,
-          description: todo.description,
-          is_completed: newStatus
-        })
-      });
-
+      document.getElementById("title").value = "";
+      document.getElementById("description").value = "";
       fetchTodos();
     }
 
     async function deleteTodo(id) {
-      await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+      await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
+      fetchTodos();
+    }
+
+    async function toggleComplete(id, currentStatus) {
+      const res = await fetch(`${apiUrl}/${id}`);
+      const data = await res.json();
+      const updatedTodo = {
+        ...data.todo,
+        is_completed: !currentStatus
+      };
+      await fetch(`${apiUrl}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedTodo),
+      });
       fetchTodos();
     }
 
