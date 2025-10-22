@@ -32,55 +32,7 @@
     /* Card hover and entry effect */
     .todo-card { transition: all 0.3s ease; }
     .todo-card:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
-  body {
-  transition: background-color 0.4s, color 0.4s;
-  background-color: #f8f9fa;
-  color: #222;
-}
-
-body.dark {
-  background-color: #1e293b;
-  color: #f1f5f9;
-}
-
-.card {
-  transition: transform 0.2s, background-color 0.4s;
-}
-
-.card:hover {
-  transform: scale(1.02);
-}
-
-.dark .card {
-  background-color: #334155;
-  color: #f8fafc;
-}
-
   </style>
-
-  <script>
-  // Save theme preference
-  function toggleTheme() {
-    const body = document.body;
-    body.classList.toggle("dark");
-
-    // Save user preference in localStorage
-    if (body.classList.contains("dark")) {
-      localStorage.setItem("theme", "dark");
-    } else {
-      localStorage.setItem("theme", "light");
-    }
-  }
-
-  // Apply saved theme on page load
-  document.addEventListener("DOMContentLoaded", () => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "dark") {
-      document.body.classList.add("dark");
-    }
-  });
-</script>
-
 </head>
 <body class="bg-gradient-to-br from-sky-50 to-sky-100 min-h-screen flex items-start justify-center py-6">
   <div class="w-full max-w-2xl px-4 fade-in">
@@ -255,12 +207,6 @@ body.dark {
     fetchTodos();
   </script>
 </body>
-<button id="theme-toggle" onclick="toggleTheme()" 
-  class="p-2 rounded-md bg-gray-300 dark:bg-gray-700 hover:scale-105 transition-transform duration-200">
-  🌙 / ☀️
-</button>
-
 </html>
-
 
 
