@@ -6,7 +6,7 @@
   <title>Terawork Todo List</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Animations */
+    /* Global Animations */
     .fade-in { animation: fadeIn 0.5s ease-in-out both; }
     @keyframes fadeIn { from {opacity:0; transform:translateY(15px);} to {opacity:1; transform:none;} }
 
@@ -32,34 +32,14 @@
     /* Card hover and entry effect */
     .todo-card { transition: all 0.3s ease; }
     .todo-card:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
-
-    /* Fixed theme toggle button */
-    #themeToggle {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      background: rgba(255,255,255,0.7);
-      backdrop-filter: blur(8px);
-      border-radius: 9999px;
-      padding: 0.5rem 0.6rem;
-      font-size: 1.25rem;
-      cursor: pointer;
-      z-index: 50;
-      transition: all 0.3s ease;
-    }
-    #themeToggle:hover { transform: scale(1.1) rotate(10deg); }
-    body.dark #themeToggle { background: rgba(30,41,59,0.8); color: #f9fafb; }
   </style>
 </head>
-<body class="bg-gradient-to-br from-sky-50 to-sky-100 min-h-screen flex items-start justify-center py-6 transition-colors duration-500">
-  <!-- Theme toggle icon -->
-  <button id="themeToggle" title="Toggle theme">🌙</button>
-
+<body class="bg-gradient-to-br from-sky-50 to-sky-100 min-h-screen flex items-start justify-center py-6">
   <div class="w-full max-w-2xl px-4 fade-in">
-    <div class="bg-white rounded-2xl shadow-lg p-5 sm:p-7 transition-colors duration-500 dark:bg-gray-800 dark:text-gray-100">
+    <div class="bg-white rounded-2xl shadow-lg p-5 sm:p-7">
       <!-- header -->
       <div class="text-center mb-6">
-        <h1 class="text-3xl sm:text-4xl font-bold text-sky-700 tracking-wide animate-bounce dark:text-sky-300">
+        <h1 class="text-3xl sm:text-4xl font-bold text-sky-700 tracking-wide animate-bounce">
           Terawork Todo List
         </h1>
       </div>
@@ -68,15 +48,15 @@
       <div class="mb-5 fade-in">
         <div class="grid grid-cols-3 gap-3">
           <input id="title" placeholder="Title"
-            class="col-span-1 p-2 border rounded-md input-focus transition dark:bg-gray-700 dark:border-gray-600" />
+            class="col-span-1 p-2 border rounded-md input-focus transition" />
           <input id="description" placeholder="Description"
-            class="col-span-2 p-2 border rounded-md input-focus transition dark:bg-gray-700 dark:border-gray-600" />
+            class="col-span-2 p-2 border rounded-md input-focus transition" />
         </div>
         <div class="mt-3 flex gap-2">
           <button id="addBtn"
             class="px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 transition btn-pop">➕ Add</button>
           <button id="refreshBtn"
-            class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 transition btn-pop dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white">⟳ Refresh</button>
+            class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 transition btn-pop">⟳ Refresh</button>
         </div>
       </div>
 
@@ -87,32 +67,11 @@
 
   <script>
     const API_BASE = '/api/todos';
-    const toggleBtn = document.getElementById('themeToggle');
-
-    // Load theme from localStorage
-    if (localStorage.getItem('theme') === 'dark') {
-      document.body.classList.add('dark');
-      toggleBtn.textContent = '☀️';
-      document.body.classList.add('bg-gray-900');
-    }
-
-    toggleBtn.addEventListener('click', () => {
-      document.body.classList.toggle('dark');
-      const darkMode = document.body.classList.contains('dark');
-      toggleBtn.textContent = darkMode ? '☀️' : '🌙';
-      if (darkMode) {
-        document.body.classList.add('bg-gray-900');
-        localStorage.setItem('theme', 'dark');
-      } else {
-        document.body.classList.remove('bg-gray-900');
-        localStorage.setItem('theme', 'light');
-      }
-    });
 
     function toast(msg) {
       const t = document.createElement('div');
       t.textContent = msg;
-      t.className = "fixed bottom-4 left-1/2 -translate-x-1/2 bg-sky-600 text-white px-4 py-2 rounded-lg shadow-lg fade-in dark:bg-sky-500";
+      t.className = "fixed bottom-4 left-1/2 -translate-x-1/2 bg-sky-600 text-white px-4 py-2 rounded-lg shadow-lg fade-in";
       document.body.appendChild(t);
       setTimeout(() => t.remove(), 2000);
     }
@@ -135,21 +94,21 @@
       container.innerHTML = '';
 
       if (!todos.length) {
-        container.innerHTML = '<div class="text-center text-gray-500 py-6 dark:text-gray-400">No todos yet. Add one!</div>';
+        container.innerHTML = '<div class="text-center text-gray-500 py-6">No todos yet. Add one!</div>';
         return;
       }
 
       todos.forEach(todo => {
         const card = document.createElement('div');
-        card.className = 'bg-white border rounded-xl p-4 shadow-sm todo-card slide-up dark:bg-gray-700 dark:border-gray-600';
+        card.className = 'bg-white border rounded-xl p-4 shadow-sm todo-card slide-up';
 
         const title = document.createElement('h3');
-        title.className = 'font-semibold text-sky-800 text-lg dark:text-sky-300';
+        title.className = 'font-semibold text-sky-800 text-lg';
         if (todo.is_completed) title.classList.add('line-through', 'text-gray-400');
         title.textContent = todo.title || '(no title)';
 
         const desc = document.createElement('p');
-        desc.className = 'text-gray-700 mt-1 todo-desc dark:text-gray-200';
+        desc.className = 'text-gray-700 mt-1 todo-desc';
         desc.textContent = todo.description || '';
 
         const actions = document.createElement('div');
@@ -249,5 +208,6 @@
   </script>
 </body>
 </html>
+
 
 
