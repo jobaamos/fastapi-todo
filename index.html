@@ -32,9 +32,46 @@
     /* Card hover and entry effect */
     .todo-card { transition: all 0.3s ease; }
     .todo-card:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
+
+    /* Dark Mode Styles */
+    .dark-mode {
+      background: linear-gradient(to bottom right, #0f172a, #1e293b);
+      color: #e2e8f0;
+    }
+
+    .dark-mode .bg-white { background-color: #1e293b !important; color: #e2e8f0; }
+    .dark-mode input, .dark-mode textarea {
+      background-color: #334155;
+      color: #f8fafc;
+      border-color: #475569;
+    }
+    .dark-mode .text-sky-800 { color: #38bdf8; }
+    .dark-mode .text-gray-700 { color: #cbd5e1; }
+    .dark-mode .border { border-color: #475569; }
+
+    /* Theme toggle button */
+    #themeToggle {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background-color: #0ea5e9;
+      color: white;
+      border: none;
+      padding: 10px 12px;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    #themeToggle:hover {
+      transform: scale(1.1);
+      background-color: #0284c7;
+    }
   </style>
 </head>
-<body class="bg-gradient-to-br from-sky-50 to-sky-100 min-h-screen flex items-start justify-center py-6">
+<body class="bg-gradient-to-br from-sky-50 to-sky-100 min-h-screen flex items-start justify-center py-6 transition-all duration-300">
   <div class="w-full max-w-2xl px-4 fade-in">
     <div class="bg-white rounded-2xl shadow-lg p-5 sm:p-7">
       <!-- header -->
@@ -65,8 +102,26 @@
     </div>
   </div>
 
+  <!-- Theme Toggle Button -->
+  <button id="themeToggle" title="Toggle theme">🌙</button>
+
   <script>
     const API_BASE = '/api/todos';
+    const body = document.body;
+    const themeToggle = document.getElementById('themeToggle');
+
+    // Load saved theme
+    if (localStorage.getItem('theme') === 'dark') {
+      body.classList.add('dark-mode');
+      themeToggle.textContent = '☀️';
+    }
+
+    themeToggle.addEventListener('click', () => {
+      body.classList.toggle('dark-mode');
+      const dark = body.classList.contains('dark-mode');
+      themeToggle.textContent = dark ? '☀️' : '🌙';
+      localStorage.setItem('theme', dark ? 'dark' : 'light');
+    });
 
     function toast(msg) {
       const t = document.createElement('div');
@@ -208,5 +263,6 @@
   </script>
 </body>
 </html>
+
 
 
