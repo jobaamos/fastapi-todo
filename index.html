@@ -1,187 +1,273 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Terawork Todo List</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Todo App</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Smooth transitions for theme */
+    /* Keep your original style + add transition for theme */
     body {
       transition: background-color 0.6s ease, color 0.6s ease;
-      background-color: #f9fafb;
-      color: #1f2937;
-      font-family: 'Poppins', sans-serif;
+    }
+
+    .fade-in { animation: fadeIn .28s ease both; }
+    @keyframes fadeIn { from {opacity:0; transform:translateY(6px)} to {opacity:1; transform:none} }
+
+    .todo-desc { word-wrap: break-word; white-space: normal; }
+
+    /* Light and dark mode backgrounds */
+    body.light {
+      background: linear-gradient(to bottom right, #e0f2fe, #f0f9ff);
+      color: #0f172a;
     }
 
     body.dark {
-      background-color: #0f172a;
+      background: linear-gradient(to bottom right, #0f172a, #1e293b);
       color: #f1f5f9;
     }
 
-    /* Glow animation on theme switch */
+    /* Container shadow adjust */
+    body.dark .shadow-lg {
+      box-shadow: 0 0 20px rgba(30, 58, 138, 0.3);
+    }
+
+    /* Card colors */
+    body.dark .bg-white {
+      background-color: #1e293b !important;
+      border-color: #334155 !important;
+    }
+
+    /* Inputs and buttons adjust */
+    body.dark input {
+      background-color: #1e293b;
+      color: #f1f5f9;
+      border-color: #334155;
+    }
+    body.dark input:focus {
+      outline: none;
+      border-color: #38bdf8;
+    }
+
+    /* Button hover states */
+    .btn {
+      transition: all 0.25s ease-in-out;
+    }
+    .btn:hover {
+      transform: scale(1.03);
+    }
+
+    /* Theme glow */
     .theme-glow {
       position: fixed;
       inset: 0;
-      background: radial-gradient(circle at center, rgba(255, 255, 255, 0.25), transparent 70%);
+      background: radial-gradient(circle at center, rgba(255,255,255,0.2), transparent 70%);
       pointer-events: none;
       opacity: 0;
       animation: glow 0.7s ease;
     }
-
     @keyframes glow {
       0% { opacity: 1; }
       100% { opacity: 0; }
     }
-
-    /* Card styling */
-    .todo-card {
-      transition: all 0.3s ease-in-out;
-      border-radius: 12px;
-      padding: 1rem;
-    }
-
-    .todo-card:hover {
-      transform: scale(1.03);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-    }
-
-    .dark .todo-card {
-      background-color: #1e293b;
-      border: 1px solid #334155;
-    }
-
-    /* Input focus */
-    input, textarea {
-      transition: all 0.3s ease;
-    }
-
-    input:focus, textarea:focus {
-      transform: scale(1.02);
-      border-color: #2563eb;
-      outline: none;
-    }
-
-    /* Responsive buttons below description */
-    .todo-buttons {
-      display: flex;
-      gap: 0.5rem;
-      justify-content: flex-end;
-      margin-top: 0.5rem;
-    }
-
-    @media (max-width: 640px) {
-      .todo-buttons {
-        justify-content: center;
-      }
-    }
   </style>
+</head>
+<body class="light min-h-screen flex items-start justify-center py-6 transition">
+  <div class="w-full max-w-2xl px-4">
+    <div class="bg-white rounded-2xl shadow-lg p-5 sm:p-7 fade-in">
+
+      <!-- header -->
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <img src="logo.png" alt="Logo" class="w-9 h-9 object-contain hidden sm:block" onerror="this.style.display='none'">
+          <h1 class="text-2xl sm:text-3xl font-semibold text-sky-700">Todo List</h1>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button id="themeToggle" title="Toggle Theme" class="btn text-xl">🌙</button>
+          <button id="logoutBtn" title="Logout"
+            class="text-sm px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-md hidden sm:inline-flex">🚪 Logout</button>
+        </div>
+      </div>
+
+      <!-- form -->
+      <div class="mb-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <input id="title" placeholder="Title" class="col-span-2 p-2 border rounded-md focus:ring-2 focus:ring-sky-200" />
+          <input id="description" placeholder="Description" class="p-2 border rounded-md focus:ring-2 focus:ring-sky-200" />
+        </div>
+        <div class="mt-3 flex gap-2">
+          <button id="addBtn" class="btn px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 transition">➕ Add</button>
+          <button id="refreshBtn" class="btn px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">⟳ Refresh</button>
+        </div>
+      </div>
+
+      <!-- list -->
+      <div id="todos" class="space-y-3"></div>
+    </div>
+  </div>
 
   <script>
-    // Theme toggle + glow effect
-    function toggleTheme() {
-      const body = document.body;
-      const isDark = body.classList.toggle("dark");
+    const API_BASE = '/api/todos';
 
-      // Add glow flash animation
-      const glow = document.createElement("div");
-      glow.className = "theme-glow";
-      document.body.appendChild(glow);
-      setTimeout(() => glow.remove(), 700);
+    function toast(msg) { alert(msg); }
 
-      // Save preference
-      localStorage.setItem("theme", isDark ? "dark" : "light");
+    // Fetch todos
+    async function fetchTodos() {
+      try {
+        const res = await fetch(API_BASE);
+        if (!res.ok) throw new Error('Failed to fetch todos');
+        const data = await res.json();
+        displayTodos(Array.isArray(data.todos) ? data.todos : []);
+      } catch (err) {
+        document.getElementById('todos').innerHTML = '<div class="text-red-500">Unable to load todos.</div>';
+      }
     }
 
-    // Apply saved theme
-    document.addEventListener("DOMContentLoaded", () => {
-      const savedTheme = localStorage.getItem("theme");
-      if (savedTheme === "dark") document.body.classList.add("dark");
-      fetchTodos();
-    });
+    function displayTodos(todos) {
+      const container = document.getElementById('todos');
+      container.innerHTML = '';
 
-    const API_URL = " https://fastapi-todo-gmjh.onrender.com"; // 🔁
-
-    async function fetchTodos() {
-      const res = await fetch(API_URL);
-      const todos = await res.json();
-      const list = document.getElementById("todo-list");
-      list.innerHTML = "";
+      if (!todos.length) {
+        container.innerHTML = '<div class="text-center text-gray-500 py-6">No todos yet. Add one!</div>';
+        return;
+      }
 
       todos.forEach(todo => {
-        const card = document.createElement("div");
-        card.className = "todo-card bg-white dark:bg-gray-800 p-4 shadow-md";
-        card.innerHTML = `
-          <h3 class="text-lg font-semibold ${todo.is_completed ? 'line-through text-green-500' : ''}">${todo.title}</h3>
-          <p class="text-sm">${todo.description}</p>
-          <div class="todo-buttons">
-            <button onclick="updateTodo(${todo.id}, ${!todo.is_completed})" class="bg-blue-500 text-white px-3 py-1 rounded hover:scale-105 transition-all">Undo</button>
-            <button onclick="deleteTodo(${todo.id})" class="bg-red-500 text-white px-3 py-1 rounded hover:scale-105 transition-all">Delete</button>
-          </div>
-        `;
-        list.appendChild(card);
+        const card = document.createElement('div');
+        card.className = 'bg-white border rounded-xl p-3 shadow-sm flex flex-col sm:flex-row sm:items-start gap-3 transition-all duration-200 hover:scale-[1.01]';
+
+        const left = document.createElement('div');
+        left.className = 'flex-1';
+        const title = document.createElement('h3');
+        title.className = 'font-semibold text-sky-800 text-lg';
+        if (todo.is_completed) title.classList.add('line-through','text-gray-400');
+        title.textContent = todo.title || '(no title)';
+
+        const desc = document.createElement('p');
+        desc.className = 'text-gray-700 mt-1 todo-desc';
+        desc.textContent = todo.description || '';
+
+        left.appendChild(title);
+        left.appendChild(desc);
+
+        const right = document.createElement('div');
+        right.className = 'flex items-center gap-2 mt-2 sm:mt-0';
+
+        const completeBtn = document.createElement('button');
+        completeBtn.className = 'btn px-3 py-1 rounded-md text-white text-sm';
+        if (todo.is_completed) {
+          completeBtn.classList.add('bg-yellow-500','hover:bg-yellow-600');
+          completeBtn.textContent = 'Undo';
+        } else {
+          completeBtn.classList.add('bg-green-600','hover:bg-green-700');
+          completeBtn.textContent = 'Done';
+        }
+        completeBtn.addEventListener('click', () => toggleComplete(todo.id, !todo.is_completed));
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn px-3 py-1 rounded-md bg-red-500 hover:bg-red-600 text-white text-sm';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.addEventListener('click', () => {
+          if (confirm('Delete this todo?')) deleteTodo(todo.id);
+        });
+
+        right.appendChild(completeBtn);
+        right.appendChild(deleteBtn);
+
+        card.appendChild(left);
+        card.appendChild(right);
+        container.appendChild(card);
       });
     }
 
     async function addTodo() {
-      const title = document.getElementById("title").value;
-      const description = document.getElementById("description").value;
+      const title = document.getElementById('title').value.trim();
+      const description = document.getElementById('description').value.trim();
+      if (!title || !description) return toast('Fill title and description');
 
-      if (!title.trim()) return alert("Title cannot be empty");
-
-      await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description })
-      });
-
-      document.getElementById("title").value = "";
-      document.getElementById("description").value = "";
-      fetchTodos();
-    }
-
-    async function updateTodo(id, is_completed) {
-      await fetch(`${API_URL}/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_completed })
-      });
-      fetchTodos();
+      try {
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description, is_completed: false })
+        });
+        if (!res.ok) throw new Error('Create failed');
+        document.getElementById('title').value = '';
+        document.getElementById('description').value = '';
+        fetchTodos();
+      } catch (err) {
+        toast('Error adding todo');
+      }
     }
 
     async function deleteTodo(id) {
-      await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-      fetchTodos();
+      try {
+        const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete failed');
+        fetchTodos();
+      } catch (err) {
+        toast('Error deleting todo');
+      }
     }
+
+    async function toggleComplete(id, newStatus) {
+      try {
+        const getRes = await fetch(`${API_BASE}/${id}`);
+        if (!getRes.ok) return toast('Todo not found');
+        const getData = await getRes.json();
+        const todo = getData.todo;
+        if (!todo) return toast('Bad todo data');
+
+        const updated = {
+          title: todo.title,
+          description: todo.description,
+          is_completed: !!newStatus
+        };
+
+        const putRes = await fetch(`${API_BASE}/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updated)
+        });
+        if (!putRes.ok) throw new Error('Update failed');
+        fetchTodos();
+      } catch (err) {
+        toast('Error updating todo');
+      }
+    }
+
+    // Theme toggle
+    const themeBtn = document.getElementById('themeToggle');
+    themeBtn.addEventListener('click', () => {
+      const body = document.body;
+      const isDark = body.classList.toggle('dark');
+      body.classList.toggle('light', !isDark);
+      themeBtn.textContent = isDark ? '☀️' : '🌙';
+      const glow = document.createElement('div');
+      glow.className = 'theme-glow';
+      document.body.appendChild(glow);
+      setTimeout(() => glow.remove(), 700);
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
+
+    // Apply saved theme
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'dark') {
+        document.body.classList.add('dark');
+        document.body.classList.remove('light');
+        document.getElementById('themeToggle').textContent = '☀️';
+      }
+      fetchTodos();
+    });
+
+    document.getElementById('addBtn').addEventListener('click', addTodo);
+    document.getElementById('refreshBtn').addEventListener('click', fetchTodos);
   </script>
-</head>
-
-<body class="min-h-screen flex flex-col items-center justify-start p-6">
-  <!-- Header -->
-  <header class="w-full flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold text-center text-blue-600 w-full">Terawork Todo List</h1>
-    <button onclick="toggleTheme()" 
-      class="absolute right-6 top-6 p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:rotate-180 transition-transform duration-500">
-      🌙 / ☀️
-    </button>
-  </header>
-
-  <!-- Add Todo Form -->
-  <div class="w-full max-w-lg bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg mb-8">
-    <input id="title" type="text" placeholder="Enter Title" 
-      class="w-full p-2 border border-gray-300 rounded-md mb-3 dark:bg-gray-700 dark:border-gray-600">
-    <textarea id="description" rows="2" placeholder="Enter Description"
-      class="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600"></textarea>
-    <button onclick="addTodo()" 
-      class="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-md transition-all hover:scale-105">
-      ➕ Add Todo
-    </button>
-  </div>
-
-  <!-- Todo List -->
-  <div id="todo-list" class="w-full max-w-lg space-y-4"></div>
 </body>
 </html>
+
 
 
 
