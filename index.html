@@ -6,13 +6,10 @@
   <title>Terawork Todo List</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-  
 
   <style>
-    /* Global Animations */
-    body {
-  font-family: 'Google Sans', sans-serif;
-}
+    /* keep your font and existing styles */
+    body { font-family: 'Google Sans', sans-serif; }
 
     .fade-in { animation: fadeIn 0.5s ease-in-out both; }
     @keyframes fadeIn { from {opacity:0; transform:translateY(15px);} to {opacity:1; transform:none;} }
@@ -30,17 +27,13 @@
       transition: all 0.25s ease-in-out;
     }
 
-    /* Todo styling */
     .todo-desc { word-wrap: break-word; white-space: normal; }
 
-    /* Button group always below text */
     .actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
 
-    /* Card hover and entry effect */
     .todo-card { transition: all 0.3s ease; }
     .todo-card:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
 
-    /* Dark Mode Styles */
     .dark-mode {
       background: linear-gradient(to bottom right, #001429, #031b38);
       color: #f1f5f9;
@@ -71,14 +64,53 @@
       transition: all 0.3s ease;
       z-index: 1000;
     }
+    #themeToggle:hover { transform: scale(1.1); background-color: #7BC400; }
 
-    #themeToggle:hover {
-      transform: scale(1.1);
-      background-color: #7BC400;
+    /* Department overlay (keeps your look) */
+    #dept-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      background: rgba(7, 10, 13, 0.5);
+      z-index: 1200;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
     }
+    #dept-modal {
+      width: 100%;
+      max-width: 520px;
+      background: #ffffff;
+      padding: 1.25rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 40px rgba(2,6,23,0.3);
+    }
+    .dept-pill { display:inline-block; margin:6px 6px 0 0; padding:6px 10px; border-radius:999px; background:#f1f5f9; cursor:pointer; border:1px solid #e2e8f0; }
+    .dept-pill.selected { box-shadow:0 0 0 3px rgba(123,196,0,0.18); border-color: rgba(123,196,0,0.6); }
+    .dept-actions { margin-top:12px; display:flex; justify-content:flex-end; gap:8px; }
+
+    /* keep overlay dark-mode friendly */
+    body.dark-mode #dept-modal { background:#0f172a; color:#e2e8f0; border: 1px solid #334155; }
+    body.dark-mode .dept-pill { background:#142436; border-color:#213446; color:#cbd5e1; }
+    body.dark-mode .dept-pill.selected { box-shadow:0 0 0 3px rgba(123,196,0,0.18); }
   </style>
 </head>
 <body class="bg-gradient-to-br from-[#E6FFD8] to-[#E8F8FF] min-h-screen flex items-start justify-center py-6 transition-all duration-300">
+  <!-- Department overlay -->
+  <div id="dept-overlay">
+    <div id="dept-modal" role="dialog" aria-modal="true">
+      <h2 style="font-weight:600; margin:0 0 8px 0;">Select your department</h2>
+      <div id="dept-list" style="min-height:40px; margin-bottom:8px;">Loading departments…</div>
+      <div style="display:flex; gap:8px;">
+        <input id="new-dept" placeholder="Create new department" style="flex:1; padding:8px; border-radius:6px; border:1px solid #e6eef6;">
+        <button id="create-dept" style="background:#7BC400; color:white; padding:8px 12px; border-radius:6px; border:none; cursor:pointer;">Create</button>
+      </div>
+      <div class="dept-actions" style="margin-top:12px;">
+        <button id="choose-dept" style="background:#00B8FF; color:white; padding:8px 12px; border-radius:6px; border:none; cursor:pointer;">Continue</button>
+      </div>
+    </div>
+  </div>
+
   <div class="w-full max-w-2xl px-4 fade-in">
     <div class="bg-white rounded-2xl shadow-lg p-5 sm:p-7">
       <!-- header -->
@@ -113,16 +145,25 @@
   <button id="themeToggle" title="Toggle theme">🌙</button>
 
   <script>
+    // ---------- configuration ----------
     const API_BASE = '/api/todos';
+    const DEPTS_ENDPOINT = '/api/departments';
+
+    // ---------- department state ----------
+    let currentDepartment = localStorage.getItem('department') || null;
+    const overlay = document.getElementById('dept-overlay');
+    const deptListEl = document.getElementById('dept-list');
+    const newDeptInput = document.getElementById('new-dept');
+    const createDeptBtn = document.getElementById('create-dept');
+    const chooseDeptBtn = document.getElementById('choose-dept');
+
+    // ---------- theme toggle (keeps your existing behavior) ----------
     const body = document.body;
     const themeToggle = document.getElementById('themeToggle');
-
-    // Load saved theme
     if (localStorage.getItem('theme') === 'dark') {
       body.classList.add('dark-mode');
       themeToggle.textContent = '☀️';
     }
-
     themeToggle.addEventListener('click', () => {
       body.classList.toggle('dark-mode');
       const dark = body.classList.contains('dark-mode');
@@ -130,6 +171,7 @@
       localStorage.setItem('theme', dark ? 'dark' : 'light');
     });
 
+    // ---------- small helper toast (keeps your style) ----------
     function toast(msg) {
       const t = document.createElement('div');
       t.textContent = msg;
@@ -138,9 +180,78 @@
       setTimeout(() => t.remove(), 2000);
     }
 
+    // ---------- departments: load and render ----------
+    async function loadDepartments() {
+      try {
+        const res = await fetch(DEPTS_ENDPOINT);
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data.departments) ? data.departments : [];
+      } catch (e) {
+        console.error('loadDepartments', e);
+        return [];
+      }
+    }
+
+    function renderDepartments(depts) {
+      deptListEl.innerHTML = '';
+      if (!depts.length) {
+        deptListEl.innerHTML = '<div class="text-sm text-gray-500">No departments yet.</div>';
+        return;
+      }
+      depts.forEach(d => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'dept-pill';
+        pill.textContent = d;
+        pill.addEventListener('click', () => {
+          // clear previous selection
+          document.querySelectorAll('.dept-pill').forEach(x => x.classList.remove('selected'));
+          pill.classList.add('selected');
+          overlay.dataset.selected = d;
+          newDeptInput.value = '';
+        });
+        deptListEl.appendChild(pill);
+      });
+    }
+
+    // ---------- overlay actions ----------
+    createDeptBtn.addEventListener('click', () => {
+      const v = newDeptInput.value.trim();
+      if (!v) return toast('Enter a department name');
+      // add pill visually and select
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'dept-pill selected';
+      pill.textContent = v;
+      // clear selection on others
+      document.querySelectorAll('.dept-pill').forEach(x => x.classList.remove('selected'));
+      deptListEl.appendChild(pill);
+      overlay.dataset.selected = v;
+    });
+
+    chooseDeptBtn.addEventListener('click', () => {
+      const chosen = (overlay.dataset.selected || newDeptInput.value || '').trim();
+      if (!chosen) { toast('Please select or create a department'); return; }
+      currentDepartment = chosen;
+      localStorage.setItem('department', chosen);
+      overlay.style.display = 'none';
+      fetchTodos(); // load for chosen dept
+    });
+
+    async function showDeptOverlayIfNeeded() {
+      if (currentDepartment) return; // already chosen
+      overlay.style.display = 'flex';
+      deptListEl.innerHTML = 'Loading departments...';
+      const depts = await loadDepartments();
+      renderDepartments(depts);
+    }
+
+    // ---------- todos (department-aware) ----------
     async function fetchTodos() {
       try {
-        const res = await fetch(API_BASE);
+        const url = currentDepartment ? `${API_BASE}?department=${encodeURIComponent(currentDepartment)}` : API_BASE;
+        const res = await fetch(url);
         if (!res.ok) throw new Error('Failed to fetch todos');
         const data = await res.json();
         displayTodos(Array.isArray(data.todos) ? data.todos : []);
@@ -209,11 +320,13 @@
       const description = document.getElementById('description').value.trim();
       if (!title || !description) return toast('Fill title and description');
 
+      const payload = { title, description, is_completed: false, department: currentDepartment || 'General' };
+
       try {
         const res = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, description, is_completed: false })
+          body: JSON.stringify(payload)
         });
         if (!res.ok) throw new Error('Create failed');
         document.getElementById('title').value = '';
@@ -247,7 +360,8 @@
         const updated = {
           title: todo.title,
           description: todo.description,
-          is_completed: !!newStatus
+          is_completed: !!newStatus,
+          department: todo.department || currentDepartment || 'General'
         };
 
         const putRes = await fetch(`${API_BASE}/${id}`, {
@@ -263,13 +377,20 @@
       }
     }
 
+    // bindings
     document.getElementById('addBtn').addEventListener('click', addTodo);
     document.getElementById('refreshBtn').addEventListener('click', fetchTodos);
 
-    fetchTodos();
+    // init
+    document.addEventListener('DOMContentLoaded', async () => {
+      currentDepartment = localStorage.getItem('department') || null;
+      await showDeptOverlayIfNeeded();
+      fetchTodos();
+    });
   </script>
 </body>
 </html>
+
 
 
 
