@@ -104,8 +104,12 @@
     body.dark-mode .dept-pill { background:#142436; border-color:#213446; color:#cbd5e1; }
     body.dark-mode .dept-pill.selected { box-shadow:0 0 0 3px rgba(123,196,0,0.18); }
 
-    /* Current department badge (non-overlapping) */
+    /* Current department badge (responsive) */
+    .header-wrapper { position: relative; }
     #current-dept {
+      position: absolute;
+      right: 1.5rem;
+      top: 1.5rem;
       display:inline-block;
       padding:6px 10px;
       border-radius:999px;
@@ -114,8 +118,23 @@
       border: 1px solid rgba(123,196,0,0.2);
       font-size: 0.95rem;
       cursor: pointer;
+      z-index: 30;
     }
     body.dark-mode #current-dept { background: rgba(123,196,0,0.12); color: #7BC400; border-color: rgba(123,196,0,0.4); }
+
+    /* mobile: make badge flow below heading to avoid overlap */
+    @media (max-width: 640px) {
+      #current-dept {
+        position: static !important;
+        right: auto;
+        top: auto;
+        margin-top: 8px;
+        display: inline-block;
+        width: auto;
+      }
+      /* ensure spacing below heading */
+      .header-wrapper .text-center { margin-bottom: 6px; }
+    }
 
   </style>
 </head>
@@ -137,18 +156,16 @@
 
   <div class="w-full max-w-2xl px-4 fade-in">
     <div class="bg-white rounded-2xl shadow-lg p-5 sm:p-7">
-      <!-- header -->
-      <div class="flex items-center justify-between mb-6">
-        <div class="text-center w-full">
+      <!-- header (wrapped so badge can be positioned cleanly) -->
+      <div class="header-wrapper">
+        <div class="text-center mb-6">
           <h1 class="text-3xl sm:text-4xl font-googlesans text-[#7BC400] tracking-wide">
             TERAWORK <br>Todo List
           </h1>
         </div>
 
-        <!-- Current department badge (click to change) -->
-        <div style="position: absolute; right: 1.5rem; top: 1.5rem;">
-          <span id="current-dept" title="Click to change department">Dept: —</span>
-        </div>
+        <!-- Current department badge (click to change department) -->
+        <span id="current-dept" title="Click to change department">Dept: —</span>
       </div>
 
       <!-- form -->
@@ -291,7 +308,8 @@
     });
 
     function updateCurrentDeptBadge() {
-      currentDeptBadge.textContent = currentDepartment ? `Dept: ${currentDepartment}` : 'Select department';
+      const el = document.getElementById('current-dept');
+      el.textContent = currentDepartment ? `Dept: ${currentDepartment}` : 'Select department';
     }
 
     // ---------- todos (department-aware) ----------
