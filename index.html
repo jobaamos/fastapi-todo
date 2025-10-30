@@ -6,10 +6,13 @@
   <title>Terawork Todo List</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  
 
   <style>
-    /* keep your font and existing styles */
-    body { font-family: 'Google Sans', sans-serif; }
+    /* Global Animations */
+    body {
+  font-family: 'Google Sans', sans-serif;
+}
 
     .fade-in { animation: fadeIn 0.5s ease-in-out both; }
     @keyframes fadeIn { from {opacity:0; transform:translateY(15px);} to {opacity:1; transform:none;} }
@@ -27,13 +30,17 @@
       transition: all 0.25s ease-in-out;
     }
 
+    /* Todo styling */
     .todo-desc { word-wrap: break-word; white-space: normal; }
 
+    /* Button group always below text */
     .actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
 
+    /* Card hover and entry effect */
     .todo-card { transition: all 0.3s ease; }
     .todo-card:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
 
+    /* Dark Mode Styles */
     .dark-mode {
       background: linear-gradient(to bottom right, #001429, #031b38);
       color: #f1f5f9;
@@ -64,7 +71,11 @@
       transition: all 0.3s ease;
       z-index: 1000;
     }
-    #themeToggle:hover { transform: scale(1.1); background-color: #7BC400; }
+
+    #themeToggle:hover {
+      transform: scale(1.1);
+      background-color: #7BC400;
+    }
 
     /* Department overlay (keeps your look) */
     #dept-overlay {
@@ -89,10 +100,23 @@
     .dept-pill.selected { box-shadow:0 0 0 3px rgba(123,196,0,0.18); border-color: rgba(123,196,0,0.6); }
     .dept-actions { margin-top:12px; display:flex; justify-content:flex-end; gap:8px; }
 
-    /* keep overlay dark-mode friendly */
     body.dark-mode #dept-modal { background:#0f172a; color:#e2e8f0; border: 1px solid #334155; }
     body.dark-mode .dept-pill { background:#142436; border-color:#213446; color:#cbd5e1; }
     body.dark-mode .dept-pill.selected { box-shadow:0 0 0 3px rgba(123,196,0,0.18); }
+
+    /* Current department badge (non-overlapping) */
+    #current-dept {
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:999px;
+      background: rgba(123,196,0,0.12);
+      color: #065f46;
+      border: 1px solid rgba(123,196,0,0.2);
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    body.dark-mode #current-dept { background: rgba(123,196,0,0.12); color: #7BC400; border-color: rgba(123,196,0,0.4); }
+
   </style>
 </head>
 <body class="bg-gradient-to-br from-[#E6FFD8] to-[#E8F8FF] min-h-screen flex items-start justify-center py-6 transition-all duration-300">
@@ -114,10 +138,17 @@
   <div class="w-full max-w-2xl px-4 fade-in">
     <div class="bg-white rounded-2xl shadow-lg p-5 sm:p-7">
       <!-- header -->
-      <div class="text-center mb-6">
-        <h1 class="text-3xl sm:text-4xl font-googlesans text-[#7BC400] tracking-wide">
-          TERAWORK <br>Todo List
-        </h1>
+      <div class="flex items-center justify-between mb-6">
+        <div class="text-center w-full">
+          <h1 class="text-3xl sm:text-4xl font-googlesans text-[#7BC400] tracking-wide">
+            TERAWORK <br>Todo List
+          </h1>
+        </div>
+
+        <!-- Current department badge (click to change) -->
+        <div style="position: absolute; right: 1.5rem; top: 1.5rem;">
+          <span id="current-dept" title="Click to change department">Dept: —</span>
+        </div>
       </div>
 
       <!-- form -->
@@ -156,6 +187,7 @@
     const newDeptInput = document.getElementById('new-dept');
     const createDeptBtn = document.getElementById('create-dept');
     const chooseDeptBtn = document.getElementById('choose-dept');
+    const currentDeptBadge = document.getElementById('current-dept');
 
     // ---------- theme toggle (keeps your existing behavior) ----------
     const body = document.body;
@@ -204,6 +236,7 @@
         pill.type = 'button';
         pill.className = 'dept-pill';
         pill.textContent = d;
+        if (d === currentDepartment) pill.classList.add('selected'); // preselect current
         pill.addEventListener('click', () => {
           // clear previous selection
           document.querySelectorAll('.dept-pill').forEach(x => x.classList.remove('selected'));
@@ -220,12 +253,12 @@
       const v = newDeptInput.value.trim();
       if (!v) return toast('Enter a department name');
       // add pill visually and select
+      // clear previous selection
+      document.querySelectorAll('.dept-pill').forEach(x => x.classList.remove('selected'));
       const pill = document.createElement('button');
       pill.type = 'button';
       pill.className = 'dept-pill selected';
       pill.textContent = v;
-      // clear selection on others
-      document.querySelectorAll('.dept-pill').forEach(x => x.classList.remove('selected'));
       deptListEl.appendChild(pill);
       overlay.dataset.selected = v;
     });
@@ -236,6 +269,7 @@
       currentDepartment = chosen;
       localStorage.setItem('department', chosen);
       overlay.style.display = 'none';
+      updateCurrentDeptBadge();
       fetchTodos(); // load for chosen dept
     });
 
@@ -245,6 +279,19 @@
       deptListEl.innerHTML = 'Loading departments...';
       const depts = await loadDepartments();
       renderDepartments(depts);
+    }
+
+    // Allow clicking the current-dept badge to change dept anytime
+    currentDeptBadge.addEventListener('click', async () => {
+      const depts = await loadDepartments();
+      renderDepartments(depts);
+      // if there is a currentDepartment, preselect it
+      overlay.dataset.selected = currentDepartment || '';
+      overlay.style.display = 'flex';
+    });
+
+    function updateCurrentDeptBadge() {
+      currentDeptBadge.textContent = currentDepartment ? `Dept: ${currentDepartment}` : 'Select department';
     }
 
     // ---------- todos (department-aware) ----------
@@ -384,12 +431,22 @@
     // init
     document.addEventListener('DOMContentLoaded', async () => {
       currentDepartment = localStorage.getItem('department') || null;
-      await showDeptOverlayIfNeeded();
+      updateCurrentDeptBadge();
+      if (!currentDepartment) {
+        await showDeptOverlayIfNeeded();
+      }
       fetchTodos();
     });
+
+    // helper to update badge text
+    function updateCurrentDeptBadge() {
+      const el = document.getElementById('current-dept');
+      el.textContent = currentDepartment ? `Dept: ${currentDepartment}` : 'Select department';
+    }
   </script>
 </body>
 </html>
+
 
 
 
